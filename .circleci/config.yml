@@ -28,6 +28,13 @@ jobs:
           destination: app-reports
       - store_test_results:
           path: app/build/test-results
+
+      - run:
+          name: Extract Google Services
+          command: |
+            echo $GCLOUD_SERVICE_KEY | base64 --decode > app/client-secret.json
+            gcloud auth activate-service-account --key-file app/client-secret.json
+
       - run:
           name: Build apk
           command: ./gradlew assembleRelease
