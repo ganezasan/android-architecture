@@ -28,6 +28,13 @@ jobs:
           destination: app-reports
       - store_test_results:
           path: app/build/test-results
+      - run:
+          name: Build apk
+          command: ./gradlew assembleRelease
+      - store_artifacts:
+          path: app/build/outputs/apk/app-release.apk
+          destination: app-release.apk
+
       # - run:
       #     name: Build Staging flavor
       #     command: |
