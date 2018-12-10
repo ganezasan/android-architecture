@@ -40,8 +40,11 @@ jobs:
             ./gradlew assembleRelease
 
       - store_artifacts:
-          path: app/build/outputs/apk/app-release.apk
+          path: app/build/outputs/apk/prod/release/app-prod-release.apk
           destination: app-release.apk
+
+      - store_artifacts:
+          path: app/build/outputs/mapping/
 
       - run:
           name: Store Google Service Account
@@ -53,41 +56,18 @@ jobs:
             gcloud auth activate-service-account --key-file app/client-secret.json
             gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
 
-      # - run:
-      #     name: Build Staging flavor
-      #     command: |
-      #       SIGNING_STORE_PASSWORD="$SIGNING_STORE_PASSWORD"
-      #       SIGNING_KEY_PASSWORD="$SIGNING_KEY_PASSWORD"
-      #       ./gradlew assembleStagingFullBuildCircleCIRelease -PdisablePreDex -Dorg.gradle.parallel=false --no-daemon -Dkotlin.compiler.execution.strategy=in-proces --stacktrace
-      # - run:
-      #     name: Publish to play store
-      #     command: |
-      #       echo $PLAY_SERVICE_ACCOUNT | base64 --decode > deploykeys/play.json &&
-      #       ./gradlew publishApkProductionFullBuildCircleCIRelease --track=alpha -PdisablePreDex -Dorg.gradle.parallel=false --no-daemon -Dkotlin.compiler.execution.strategy=in-proces --stacktrace
+      - run:
+          name: Test with Firebase Test Lab
+          command: |
+            gcloud firebase test android run \
+              --type robo \
+              --app app/build/outputs/apk/prod/release/app-prod-release.apk \
+              --device model=Nexus6,version=21,locale=en,orientation=portrait \
+              --device model=Nexus7,version=19,locale=en,orientation=landscape \
+              --results-bucket ${GOOGLE_PROJECT_ID}.appspot.com
 
 workflows:
   version: 2
   build:
     jobs:
       - build
-
-# dependencies:
-#   pre:
-#     - sudo pip install -U crcmod
-#     - echo y | android update sdk --no-ui --all --filter "tools,platform-tools,build-tools-26.0.2,android-26,extra-android-m2repository,extra-google-m2repository"
-#
-#   post:
-#     - cd todoapp;./gradlew :app:assembleDebug -PdisablePreDex
-#     - cd todoapp;./gradlew :app:assembleAndroidTest -PdisablePreDex
-#     - echo ${GCLOUD_SERVICE_KEY} | base64 --decode > ${HOME}/client-secret.json
-#     - sudo /opt/google-cloud-sdk/bin/gcloud config set project android-devrel-ci
-#     - sudo /opt/google-cloud-sdk/bin/gcloud --quiet components update
-#     - sudo /opt/google-cloud-sdk/bin/gcloud auth activate-service-account travis-ci-for-blueprints@android-devrel-ci.iam.gserviceaccount.com --key-file ${HOME}/client-secret.json
-#
-# test:
-#   override:
-#     - echo "y" | sudo /opt/google-cloud-sdk/bin/gcloud firebase test android run --app todoapp/app/build/outputs/apk/mock/debug/app-mock-debug.apk --test todoapp/app/build/outputs/apk/androidTest/mock/debug/app-mock-debug-androidTest.apk -d Nexus5X -v 26  -l fr --results-bucket cloud-test-android-devrel-ci
-#   post:
-#     - sudo /opt/google-cloud-sdk/bin/gsutil -m cp -r -U `sudo /opt/google-cloud-sdk/bin/gsutil ls gs://cloud-test-android-devrel-ci | tail -1` $CIRCLE_ARTIFACTS/ | true
-#     - mkdir -p $CIRCLE_TEST_REPORTS/junit/
-#     - find $CIRCLE_ARTIFACTS -name \*.xml -exec cp {} $CIRCLE_TEST_REPORTS/junit/ \;
