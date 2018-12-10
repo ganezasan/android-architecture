@@ -30,6 +30,10 @@ jobs:
           path: app/build/test-results
 
       - run:
+          name: KeyStore
+          command: echo $RELEASE_KEYSTORE | base64 --decode > app/release.keystore
+
+      - run:
           name: Build debug APK and release APK
           command: |
             ./gradlew assembleDebug
@@ -48,7 +52,6 @@ jobs:
           command: |
             gcloud auth activate-service-account --key-file app/client-secret.json
             gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
-
 
       # - run:
       #     name: Build Staging flavor
